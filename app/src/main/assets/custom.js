@@ -24,3 +24,45 @@ window.open = function (url, target, features) {
 }
 
 document.addEventListener('click', hookClick, { capture: true })
+
+use tauri::api::permission::{check, request};
+use tauri::command;
+
+#[command]
+async fn request_camera_permission() -> Result<bool, String> {
+    // 检查摄像头权限是否已授予
+    let camera_perm = check("device:allow-camera").await.map_err(|e| e.to_string())?;
+    
+    if camera_perm {
+        Ok(true)
+    } else {
+        // 请求摄像头权限
+        let result = request("device:allow-camera").await.map_err(|e| e.to_string())?;
+        Ok(result)
+    }
+}
+
+#[command]
+async fn request_storage_permission() -> Result<bool, String> {
+    // 检查文件系统权限
+    let storage_perm = check("fs:scope").await.map_err(|e| e.to_string())?;
+    
+    if storage_perm {
+        Ok(true)
+    } else {
+        // 请求文件系统权限
+        let result = request("fs:scope").await.map_err(|e| e.to_string())?;
+        Ok(result)
+    }
+}
+
+// 在 setup 函数中注册命令
+fn main() {
+    tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![
+            request_camera_permission,
+            request_storage_permission
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
